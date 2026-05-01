@@ -278,9 +278,10 @@ if mode == "📤 Upload Image":
         
         with col1:
             st.subheader("📷 Original Image")
-            st.image(image, use_column_width=True)
+            st.image(image, use_container_width=True)
         
         # Perform inference
+        all_probs = None
         with st.spinner("🔍 Analyzing image..."):
             if use_api:
                 # Use API
@@ -318,7 +319,7 @@ if mode == "📤 Upload Image":
                     if show_gradcam and "gradcam_image" in result:
                         st.subheader("🔥 Grad-CAM Visualization")
                         gradcam_img = base64.b64decode(result["gradcam_image"])
-                        st.image(gradcam_img, use_column_width=True)
+                        st.image(gradcam_img, use_container_width=True)
                         st.caption(result.get("explanation", "Visual explanation of prediction"))
                     
             else:
@@ -359,30 +360,31 @@ if mode == "📤 Upload Image":
                         overlaid = overlay_heatmap_on_image(image_np, heatmap, alpha=0.4)
                         
                         st.subheader("🔥 Grad-CAM Visualization")
-                        st.image(overlaid, use_column_width=True, caption="Red regions indicate areas that influenced the prediction")
+                        st.image(overlaid, use_container_width=True, caption="Red regions indicate areas that influenced the prediction")
         
         # Show probability distribution
-        st.subheader("📊 Probability Distribution")
-        
-        if isinstance(all_probs, dict):
-            prob_data = all_probs
-        else:
-            prob_data = {class_name: float(prob) for class_name, prob in zip(CLASS_NAMES, all_probs)}
-        
-        # Create bar chart
-        import pandas as pd
-        df = pd.DataFrame({
-            'Class': list(prob_data.keys()),
-            'Probability': [v * 100 for v in prob_data.values()]
-        }).sort_values('Probability', ascending=True)
-        
-        st.bar_chart(df.set_index('Class'))
-        
-        # Detailed probabilities
-        with st.expander("📋 Detailed Probabilities"):
-            for class_name in CLASS_NAMES:
-                prob = prob_data.get(class_name, 0.0)
-                st.write(f"**{class_name}:** {prob*100:.2f}%")
+        if all_probs is not None:
+            st.subheader("📊 Probability Distribution")
+            
+            if isinstance(all_probs, dict):
+                prob_data = all_probs
+            else:
+                prob_data = {class_name: float(prob) for class_name, prob in zip(CLASS_NAMES, all_probs)}
+            
+            # Create bar chart
+            import pandas as pd
+            df = pd.DataFrame({
+                'Class': list(prob_data.keys()),
+                'Probability': [v * 100 for v in prob_data.values()]
+            }).sort_values('Probability', ascending=True)
+            
+            st.bar_chart(df.set_index('Class'))
+            
+            # Detailed probabilities
+            with st.expander("📋 Detailed Probabilities"):
+                for class_name in CLASS_NAMES:
+                    prob = prob_data.get(class_name, 0.0)
+                    st.write(f"**{class_name}:** {prob*100:.2f}%")
 
 # ============================================================================
 # Mode: Real-time Camera
@@ -446,7 +448,7 @@ elif mode == "📷 Real-time Camera":
                            (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
                 
                 # Display
-                frame_placeholder.image(display_frame, channels="RGB", use_column_width=True)
+                frame_placeholder.image(display_frame, channels="RGB", use_container_width=True)
                 
                 # Update results
                 result_placeholder.metric(
@@ -563,11 +565,11 @@ elif mode == "🌐 API Integration":
                 if "error" not in result:
                     col1, col2 = st.columns(2)
                     with col1:
-                        st.image(image, caption="Original", use_column_width=True)
+                        st.image(image, caption="Original", use_container_width=True)
                     with col2:
                         if "gradcam_image" in result:
                             gradcam_img = base64.b64decode(result["gradcam_image"])
-                            st.image(gradcam_img, caption="Grad-CAM Overlay", use_column_width=True)
+                            st.image(gradcam_img, caption="Grad-CAM Overlay", use_container_width=True)
                     
                     st.json(result)
                 else:
