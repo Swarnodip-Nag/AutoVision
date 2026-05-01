@@ -6,6 +6,7 @@ import streamlit as st
 import cv2
 import numpy as np
 import torch
+import pandas as pd
 from PIL import Image
 import sys
 import os
@@ -372,7 +373,6 @@ if mode == "📤 Upload Image":
                 prob_data = {class_name: float(prob) for class_name, prob in zip(CLASS_NAMES, all_probs)}
             
             # Create bar chart
-            import pandas as pd
             df = pd.DataFrame({
                 'Class': list(prob_data.keys()),
                 'Probability': [v * 100 for v in prob_data.values()]
