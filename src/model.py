@@ -6,7 +6,8 @@ from torchvision import transforms
 NUM_CLASSES = 6  # crazing, inclusion, patches, pitted_surface, rolled-in_scale, scratches
 
 def get_model(pretrained=True):
-    model = models.resnet18(pretrained=pretrained)
+    weights = models.ResNet18_Weights.IMAGENET1K_V1 if pretrained else None
+    model = models.resnet18(weights=weights)
     num_ftrs = model.fc.in_features
     model.fc = nn.Linear(num_ftrs, NUM_CLASSES)
     return model
