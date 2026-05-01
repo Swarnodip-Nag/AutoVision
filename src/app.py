@@ -4,6 +4,7 @@ Real-time defect detection API with explainability
 """
 import os
 import sys
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -22,22 +23,6 @@ from src.model import get_model, get_transforms
 from src.gradcam import GradCAM
 from src.preprocess import overlay_heatmap
 
-# Initialize FastAPI
-app = FastAPI(
-    title="AutoVision API",
-    description="Intelligent Visual Defect Detection System for Manufacturing Quality Control",
-    version="1.0.0"
-)
-
-# Add CORS middleware for frontend integration
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
 # Configuration
 MODEL_PATH = './models/resnet18_anomaly.pth'
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -48,38 +33,56 @@ model = None
 gradcam = None
 transform = None
 
-@app.on_event("startup")
-async def load_models():
+@asynccontextmanager
+async def lifespan(app: FastAPI):
     """Load models on startup"""
     global model, gradcam, transform
-    
+
     print("=" * 80)
     print("🚀 AutoVision API Starting Up...")
     print("=" * 80)
-    
+
     if not os.path.exists(MODEL_PATH):
         print(f"❌ Error: Model not found at {MODEL_PATH}")
         print("Please train the model first by running: python src/train.py")
-        return
-    
-    print(f"📦 Loading PyTorch model from: {MODEL_PATH}")
-    model = get_model(pretrained=False).to(DEVICE)
-    model.load_state_dict(torch.load(MODEL_PATH, map_location=DEVICE))
-    model.eval()
-    print(f"✓ Model loaded successfully on {DEVICE}")
-    
-    print("🔍 Initializing Grad-CAM for explainability...")
-    gradcam = GradCAM(MODEL_PATH, target_layer='layer4')
-    print("✓ Grad-CAM initialized")
-    
-    transform = get_transforms()
-    print("✓ Image transforms ready")
-    
-    print("\n" + "=" * 80)
-    print("✅ AutoVision API Ready!")
-    print("📊 Supported defect classes:", CLASS_NAMES)
-    print("🌐 API Documentation: http://localhost:8000/docs")
-    print("=" * 80 + "\n")
+    else:
+        print(f"📦 Loading PyTorch model from: {MODEL_PATH}")
+        model = get_model(pretrained=False).to(DEVICE)
+        model.load_state_dict(torch.load(MODEL_PATH, map_location=DEVICE))
+        model.eval()
+        print(f"✓ Model loaded successfully on {DEVICE}")
+
+        print("🔍 Initializing Grad-CAM for explainability...")
+        gradcam = GradCAM(MODEL_PATH, target_layer='layer4')
+        print("✓ Grad-CAM initialized")
+
+        transform = get_transforms()
+        print("✓ Image transforms ready")
+
+        print("\n" + "=" * 80)
+        print("✅ AutoVision API Ready!")
+        print("📊 Supported defect classes:", CLASS_NAMES)
+        print("🌐 API Documentation: http://localhost:8000/docs")
+        print("=" * 80 + "\n")
+
+    yield
+
+# Initialize FastAPI
+app = FastAPI(
+    title="AutoVision API",
+    description="Intelligent Visual Defect Detection System for Manufacturing Quality Control",
+    version="1.0.0",
+    lifespan=lifespan
+)
+
+# Add CORS middleware for frontend integration
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.get("/")
 async def root():
